@@ -14,7 +14,7 @@ public class TheGame extends ApplicationAdapter {
 
     private World world;
     private Body groundBody;
-    private Body playerBody;
+    private Player player;
 
     private OrthographicCamera camera;
     private Box2DDebugRenderer debugRenderer;
@@ -24,7 +24,7 @@ public class TheGame extends ApplicationAdapter {
 
     @Override
 	public void create () {
-		world = new World(new Vector2(0, -30), true);
+		world = new World(new Vector2(0, -35), true);
 
         world.setContactListener(new MyContactListener());
 
@@ -47,36 +47,9 @@ public class TheGame extends ApplicationAdapter {
 
         groundBox.dispose();
 
-        // create box
-        BodyDef playerBodyDef = new BodyDef();
-        playerBodyDef.type = BodyDef.BodyType.DynamicBody;
-        playerBodyDef.position.set(-20.0f, 4.0f);
-        playerBodyDef.fixedRotation = true;
-
-        playerBody = world.createBody(playerBodyDef);
-
-        PolygonShape playerBox = new PolygonShape();
-        playerBox.setAsBox(0.5f, 1.0f);
-
-        FixtureDef playerFixtureDef = new FixtureDef();
-        playerFixtureDef.shape = playerBox;
-        playerFixtureDef.density = 1.0f;
-        playerFixtureDef.friction = 0.0f;
-
-        Fixture playerFixture = playerBody.createFixture(playerFixtureDef);
-        playerFixture.setUserData("player");
-
-        playerBox.dispose();
-
-        PolygonShape footSensorBox = new PolygonShape();
-        footSensorBox.setAsBox(0.3f, 0.5f, new Vector2(0, -1.5f), 0);
-
-        FixtureDef footFixtureDef = new FixtureDef();
-        footFixtureDef.isSensor = true;
-        footFixtureDef.shape = footSensorBox;
-
-        Fixture footFixture = playerBody.createFixture(footFixtureDef);
-        footFixture.setUserData("foot");
+        // create player
+        player = new Player();
+        player.spawn(-20, 4, world);
 
         // initialize camera
         camera = new OrthographicCamera(50, 50);
@@ -92,52 +65,56 @@ public class TheGame extends ApplicationAdapter {
 
         debugRenderer.render(world, camera.combined);
 
-        final float MAX_VELOCITY = 10.0f;
+        final float MAX_VELOCITY = 8.0f;
         final float GROUND_ACCELERATION = 0.3f;
         final float AIR_ACCELERATION = 0.1f;
         final float GROUND_FRICTION = 0.9f;
-        final float AIR_FRICTION = 0.99999f;
-
-        Vector2 vel = playerBody.getLinearVelocity();
-        Vector2 pos = playerBody.getPosition();
+        final float AIR_FRICTION = 0.95f;
         float inputXForce = 0;
 
         boolean onGround = footContacts > 0;
 
+        Vector2 pos = player.body.getPosition();
 
-        // apply left impulse, but only if max velocity is not reached yet
+        // apply left impulse
         if (Gdx.input.isKeyPressed(Input.Keys.A)) {
-            inputXForce = (MAX_VELOCITY + vel.x);
+            inputXForce = (MAX_VELOCITY + player.body.getLinearVelocity().x);
 
             if(onGround)
                 inputXForce *= GROUND_ACCELERATION;
             else
                 inputXForce *= AIR_ACCELERATION;
 
-            playerBody.applyLinearImpulse(-inputXForce, 0.0f, pos.x, pos.y, true);
+            player.body.applyLinearImpulse(-inputXForce, 0.0f, pos.x, pos.y, true);
         }
 
-        // apply right impulse, but only if max velocity is not reached yet
+        // apply right impulse
         if (Gdx.input.isKeyPressed(Input.Keys.D)) {
-            inputXForce = (MAX_VELOCITY - vel.x);
+            inputXForce = (MAX_VELOCITY - player.body.getLinearVelocity().x);
 
             if(onGround)
                 inputXForce *= GROUND_ACCELERATION;
             else
                 inputXForce *= AIR_ACCELERATION;
 
-            playerBody.applyLinearImpulse(inputXForce, 0.0f, pos.x, pos.y, true);
+            player.body.applyLinearImpulse(inputXForce, 0.0f, pos.x, pos.y, true);
         }
 
-        if(Gdx.input.isKeyPressed(Input.Keys.W) && onGround) {
-            playerBody.applyLinearImpulse(0.0f, 6.0f, pos.x, pos.y, true);
-        }
+        if(Gdx.input.isKeyPressed(Input.Keys.W) && onGround)
+            player.body.applyLinearImpulse(0.0f, 20.0f, pos.x, pos.y, true);
+        else if(!Gdx.input.isKeyPressed(Input.Keys.W) && !onGround && player.body.getLinearVelocity().y > 10)
+                player.body.setLinearVelocity(player.body.getLinearVelocity().x, player.body.getLinearVelocity().y - 1);
 
         if(inputXForce == 0) {
             if(onGround)
-                playerBody.setLinearVelocity(playerBody.getLinearVelocity().x * GROUND_FRICTION, playerBody.getLinearVelocity().y);
+                player.body.setLinearVelocity(player.body.getLinearVelocity().x * GROUND_FRICTION, player.body.getLinearVelocity().y);
             else
-                playerBody.setLinearVelocity(playerBody.getLinearVelocity().x * AIR_FRICTION, playerBody.getLinearVelocity().y);
+                player.body.setLinearVelocity(player.body.getLinearVelocity().x * AIR_FRICTION, player.body.getLinearVelocity().y);
+        }
+
+        if(pos.y < -25) {
+            player.kill(world);
+            player.spawn(-20, 4, world);
         }
 
         world.step(1 / 60f, 6, 2);
