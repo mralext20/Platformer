@@ -9,14 +9,14 @@ public class MyContactListener implements ContactListener {
     @Override
     public void beginContact(Contact contact) {
         if(contact.getFixtureA().getUserData().equals("foot") || contact.getFixtureB().getUserData().equals("foot")) {
-            TheGame.footContacts++;
+            TheGame.getPlayer().setOnGround(true);
         }
     }
 
     @Override
     public void endContact(Contact contact) {
         if(contact.getFixtureA().getUserData().equals("foot") || contact.getFixtureB().getUserData().equals("foot")) {
-            TheGame.footContacts--;
+            TheGame.getPlayer().setOnGround(false);
         }
     }
 
